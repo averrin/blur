@@ -19,6 +19,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(view)
         self.scene = scene
+        scene.view = view
 
         bg = QBrush(QPixmap('bg.png'))
         scene.setBackgroundBrush(bg)
@@ -60,24 +61,22 @@ class Compositor(object):
 
     def getBackground(self, window):
         index = self.windows.index(window)
+        hidden = []
+        self.scene.view.setUpdatesEnabled(False)
         for w in self.windows:
-            if w.bg is not None and w.collidesWithItem(window):
+            if w.collidesWithItem(window):
                 i = self.windows.index(w)
                 if i >= index:
-                    w.bg.hide()
-                    w.title.hide()
-                    w.border.setOpacity(0)
+                    w.setOpacity(0)
+                    hidden.append(w)
         bg = self.renderBackground(
             window.buffer,
             QPointF(window.scenePos().x(), window.scenePos().y()+window.titleHeight),
             QRect(0, 0, window.border.boundingRect().width(), window.border.boundingRect().height())
         )
-        for w in self.windows:
-            if w.bg is not None and not w.bg.isVisible():
-                w.bg.show()
-                w.title.show()
-                w.border.setOpacity(1)
-                # w.border.show()
+        for w in hidden:
+            w.setOpacity(1)
+        self.scene.view.setUpdatesEnabled(True)
         return bg
 
 class Window(QGraphicsItemGroup):
@@ -97,9 +96,14 @@ class Window(QGraphicsItemGroup):
         self.border = QGraphicsRectItem(QRectF(rect.x(), rect.y()+self.titleHeight, rect.width(), rect.height()-self.titleHeight))
         self.border.setPen(QPen(QColor('#444')))
         self.border.setZValue(5)
+        self.content = QGraphicsTextItem('Lorem ipsum and some fish\nby Averrin. 2015')
+        self.content.setZValue(15)
+        self.content.setPos(rect.x() + 10, rect.y() + self.titleHeight + 10)
+        self.content.setDefaultTextColor(QColor('#232323'))
         self.addToGroup(self.border)
         self.addToGroup(self.title)
         self.addToGroup(self.text)
+        self.addToGroup(self.content)
         self.effect = QGraphicsBlurEffect()
         self.effect.setBlurRadius(8)
         self.effect.setBlurHints(QGraphicsBlurEffect.PerformanceHint)
